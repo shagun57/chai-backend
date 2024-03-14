@@ -101,9 +101,10 @@ const loginUser = asyncHandler (async(req, res) => {
 
     //get user data email and password
      const {email, password} = req.body;
+     console.log(email);
 
      //if email not entered
-     if(!(email || password)) {
+     if(!email && !password) {
         throw new ApiError(400, "Email and password are required");
      }
 
@@ -129,8 +130,9 @@ const loginUser = asyncHandler (async(req, res) => {
      //send cookies
      
      //it contains user info excluding password and refresh tokens
-     const loggedInUser = User.findById(user._id)
+     const loggedInUser = await User.findById(user._id)
      .select("-password -refreshToken")
+     //console.log(loggedInUser);
 
      //option object to send cookies. 
      //httpOnly and secure makes sure that cookies are modify only by server
@@ -139,14 +141,26 @@ const loginUser = asyncHandler (async(req, res) => {
         secure: true
      }
 
+     const responseData = {
+        user: {
+            id: loggedInUser._id,
+            email: loggedInUser.email,
+            name: loggedInUser.fullName,
+            username: loggedInUser.username,
+            avatar: loggedInUser.avatar
+
+
+        },
+        refreshToken: refreshToken,
+        accessToken: accessToken
+     }
+
      return res
      .status(200)
      .cookie("accessToken", accessToken, options)
      .cookie("refreshToken", refreshToken, options)
      .json(
-        new ApiResponse(200,{
-            user: loggedInUser, refreshToken, accessToken  //sending again if user wants to save token
-        },"User logged in successfully")
+        new ApiResponse(200, responseData, "User logged in successfully")
      )
 
 }) 

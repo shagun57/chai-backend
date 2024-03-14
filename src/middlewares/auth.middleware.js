@@ -1,10 +1,10 @@
 //authentication middleware, we created this middleware coz we need to authorize user
 //at many places eg: when liking video, commenting on video. So its good to keep it
 //here and use it anywhere you want.
-import { ApiError } from "../utils/apiError";
-import { asyncHandler } from "../utils/asyncHandler";
+import { ApiError } from "../utils/apiError.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
 import jwt from "jsonwebtoken";
-import { User } from "../models/user.model";
+import { User } from "../models/user.model.js";
 
 export const verifyJWT = asyncHandler(async(req, res, next) => {
     try {
