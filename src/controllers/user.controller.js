@@ -192,7 +192,6 @@ const logoutUser = asyncHandler( async(req,res) => {
 })
 
 //create new refresh token for user after session expiry
-
 const refreshAccessToken = asyncHandler(async(req,res) => {
     //request refresh token from cookies(browser) or body(mobile)
     const incomingRefreshToken= req.cookies.refreshToken || req.body.refreshToken
