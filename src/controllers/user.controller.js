@@ -4,6 +4,7 @@ import {User} from  "../models/user.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import  jwt  from "jsonwebtoken";
+import mongoose from "mongoose";
 
 
 const generateAccessAndRefreshTokens = async(userId) => {
@@ -375,7 +376,7 @@ const getUserChannelProfile = asyncHandler(async(req,res) => {
                 subscribersCount: {
                     $size: "$subscribers"
                 },
-                channelsSubscribedTo: {
+                channelsSubscribedToCount: {
                     $size: "$subscribedTo"
                 },
                 isSubscribed: {
@@ -389,7 +390,7 @@ const getUserChannelProfile = asyncHandler(async(req,res) => {
                 }
             }
         },
-        {
+        {   //project is projection
             $project: {
                 //to show which fields we want to show (1 for true, 0 for false)
                 fullName: 1,
@@ -403,7 +404,7 @@ const getUserChannelProfile = asyncHandler(async(req,res) => {
             }
         }
     ])
-
+    //if no channel exist
     if(!channel?.length){
         throw new ApiError(404, "channel does not exist")
     }
@@ -411,6 +412,64 @@ const getUserChannelProfile = asyncHandler(async(req,res) => {
     return res
     .status(200)
     .json(new ApiResponse(200, channel[0], "User channel fetched"))
+})
+
+//to get watch history of the user.
+const getWatchHistory = asyncHandler(async(req,res) => {
+    const user = await User.aggregate([
+        {
+            $match: {
+                //aggregate pipelines ka code directly mongoDb handle krta hai
+                //isliye we have to create new object Id with mongoose help
+                //in this we matched User _id with the document in video model 
+                _id : new mongoose.Types.ObjectId(req.user._id)
+            }
+        },
+        {//nested lookup pipeline(because we have 'owner' field in video model which directs
+        //back to 'User' model). so we have to lookup for user otherwise resulted
+        //aggregation would be contain incomplete data.
+            $lookup: {
+                from : "videos",
+                localField: "watchHistory",
+                foreignField: "_id",
+                as: "watch_History",
+                pipeline: [
+                    {
+                        $lookup: {
+                            //lookup user in users model 
+                            from: "users",
+                            localField: "owner",
+                            foreignField: "_id",
+                            as:"videoOwner",
+                            pipeline: [
+                                {
+                                    //further nesting of pipeline to get only desired user data
+                                    $project: {
+                                        fullName: 1,
+                                        avatar: 1,
+                                        username: 1
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    { //adding this pipeline to show data in more structured way(optional)
+                      //we get an array from above pipeline,at [0] we get all the projected data
+                        $addFields: {
+                            //overwriting the existing video owner field
+                            videoOwner : {
+                                //pick the first element from video owner field
+                                $first: $videoOwner
+                            }
+                        }
+                    }
+                ]
+            }
+        }
+    ])
+    return res
+    .status(200)
+    .json(new ApiResponse(200,user[0].watchHistory,"Watch history fetched successfully"))
 })
 
 export {registerUser,
@@ -422,5 +481,6 @@ export {registerUser,
         updateAccountDetails,
         updateUserAvatar,
         updateCoverImage,
-        getUserChannelProfile
+        getUserChannelProfile,
+        getWatchHistory
 };
