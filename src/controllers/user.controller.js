@@ -3,7 +3,7 @@ import { ApiError } from "../utils/apiError.js";
 import {User} from  "../models/user.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/apiResponse.js";
-import { jwt } from "jsonwebtoken";
+import  jwt  from "jsonwebtoken";
 
 
 const generateAccessAndRefreshTokens = async(userId) => {
@@ -278,13 +278,13 @@ const updateAccountDetails = asyncHandler(async(req,res) => {
     if(!fullName || !email){
         throw new ApiError(400,"All fields are required")
     }
-    const user = User.findByIdAndUpdate(req.user?._id,
+    const user = await User.findByIdAndUpdate(req.user?._id,
         {$set:{fullName, email}},
         {new: true}).select("-password")
 
         return res
         .status(200)
-        .json(new ApiResponse(200, user, "Updation succesfull"))
+        .json(new ApiResponse(200, user, "Updation successfull"))
     
 })
 
@@ -336,6 +336,83 @@ const updateCoverImage = asyncHandler(async(req,res) => {
     .json(new ApiResponse(200,user,"Cover Image updated"))
 })
 
+//user channel profile with mongo aggregations
+const getUserChannelProfile = asyncHandler(async(req,res) => {
+    const {username} = req.params
+
+    if(!username?.trim()){
+        throw new ApiError(400, "Username is missing")
+    }
+    //using aggregation pipelines
+    const channel = await User.aggregate([
+        {
+            //match username in User model
+            $match: {
+                username: username?.toLowerCase()
+            },
+            $lookup: {
+                //to show subscribers. Subscriptions mei user id lekar check kro ki yeh id
+                //subscriptions model ki field channel mei kahan kahan hai.
+                //jinhone channel ko subscribe kiya unki list bann jyegi
+                from: "subscriptions",
+                localField: _id,
+                foreignField: "channel",
+                as: "subscribers"
+            },
+            $lookup: {
+                //to show who the user is subscribing. subscription model mei check kro ki
+                //user id kahan kahan hai subscriber field mei. jisko subscribe kiya 
+                //uski list bann jyegi.
+                from: "subscriptions",
+                localField: _id,
+                foreignField: "subscriber",
+                as: "subscribedTo"
+            },
+        },
+        {
+            $addFields: {
+                //add fields to user model
+                subscribersCount: {
+                    $size: "$subscribers"
+                },
+                channelsSubscribedTo: {
+                    $size: "$subscribedTo"
+                },
+                isSubscribed: {
+                    //to show if visiting user is subscribed to this channel
+                    //we are sending true or false for front-end to  
+                    $cond: {
+                        if: {$in: [req.user?._id, "$subscribers.subscriber"]},
+                        then: true,
+                        else: false,
+                    }
+                }
+            }
+        },
+        {
+            $project: {
+                //to show which fields we want to show (1 for true, 0 for false)
+                fullName: 1,
+                username: 1,
+                subscribersCount: 1,
+                channelsSubscribedTo: 1,
+                isSubscribed: 1,
+                email: 1,
+                coverImage: 1,
+                avatar: 1
+            }
+        }
+    ])
+
+    if(!channel?.length){
+        throw new ApiError(404, "channel does not exist")
+    }
+
+    return res
+    .status(200)
+    .json(new ApiResponse(200, channel[0], "User channel fetched"))
+})
+
 export {registerUser,
         loginUser,
         logoutUser,
@@ -344,5 +421,6 @@ export {registerUser,
         getCurrentUser,
         updateAccountDetails,
         updateUserAvatar,
-        updateCoverImage
+        updateCoverImage,
+        getUserChannelProfile
 };
