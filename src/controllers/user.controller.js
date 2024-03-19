@@ -175,8 +175,8 @@ const logoutUser = asyncHandler( async(req,res) => {
         //middleware auth will provide _id as user info is saved in req.user(see auth.middleware)
         req.user._id,
         {
-            $set: {
-                refreshToken: undefined
+            $unset: {
+                refreshToken: 1   //unset with flag 1 removes the field from document
             }    
         },
         { 
@@ -350,33 +350,38 @@ const getUserChannelProfile = asyncHandler(async(req,res) => {
             //match username in User model
             $match: {
                 username: username?.toLowerCase()
-            },
+            }
+        },
+        {
             $lookup: {
                 //to show subscribers. Subscriptions mei user id lekar check kro ki yeh id
                 //subscriptions model ki field channel mei kahan kahan hai.
                 //jinhone channel ko subscribe kiya unki list bann jyegi
                 from: "subscriptions",
-                localField: _id,
+                localField: "_id",
                 foreignField: "channel",
                 as: "subscribers"
-            },
+            }
+        },
+        {
             $lookup: {
                 //to show who the user is subscribing. subscription model mei check kro ki
                 //user id kahan kahan hai subscriber field mei. jisko subscribe kiya 
                 //uski list bann jyegi.
                 from: "subscriptions",
-                localField: _id,
+                localField: "_id",
                 foreignField: "subscriber",
                 as: "subscribedTo"
-            },
+            }
         },
+        
         {
             $addFields: {
                 //add fields to user model
                 subscribersCount: {
                     $size: "$subscribers"
                 },
-                channelsSubscribedToCount: {
+                SubscribedToCount: {
                     $size: "$subscribedTo"
                 },
                 isSubscribed: {
@@ -396,7 +401,7 @@ const getUserChannelProfile = asyncHandler(async(req,res) => {
                 fullName: 1,
                 username: 1,
                 subscribersCount: 1,
-                channelsSubscribedTo: 1,
+                SubscribedToCount: 1,
                 isSubscribed: 1,
                 email: 1,
                 coverImage: 1,
