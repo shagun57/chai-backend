@@ -1,7 +1,7 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/apiError.js";
 import {User} from  "../models/user.model.js";
-import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import { deleteOnCloudinary, uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import  jwt  from "jsonwebtoken";
 import mongoose from "mongoose";
@@ -302,11 +302,18 @@ const updateUserAvatar = asyncHandler(async(req,res) => {
         throw new ApiError(400, "Error while uploading file")
     }
 
+    //we used user1 to store avatar file so that we can delete it from cloud when new one is uploaded 
+    const user1 = await findById(req.user?._id).select("-password")
+    const oldAvatar = user1.avatar
+
     const user = await User.findByIdAndUpdate(
         req.user?._id,
         {$set:{avatar: avatar.url}},
         {new: true}
     ).select("-password")
+
+    //delete file from cloudinary
+    deleteOnCloudinary(oldAvatar);
 
     return res
     .status(200)
