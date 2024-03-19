@@ -459,7 +459,7 @@ const getWatchHistory = asyncHandler(async(req,res) => {
                             //overwriting the existing video owner field
                             videoOwner : {
                                 //pick the first element from video owner field
-                                $first: $videoOwner
+                                $first: "$videoOwner"
                             }
                         }
                     }
