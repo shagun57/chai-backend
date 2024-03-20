@@ -9,7 +9,117 @@ import { uploadOnCloudinary, deleteOnCloudinary } from "../utils/cloudinary.js"
 
 //list all videos 
 const getAllVideos = asyncHandler(async(req,res) => {
+    const {page = 1, limit = 10, query, sortBy, sortType, userId} = req.query;
 
+    const pageNumber = parseInt(page)
+    const pageSize = parseInt(limit)
+    const skip = (pageNumber -1) * pageSize
+
+    if(!query) {
+        throw new ApiError(400, "Query is required to retrieve videos")
+    }
+
+    if(!sortBy) {
+        throw new ApiError(400, "Give sort by values to sort videos")
+    }
+
+    if(!sortType){
+        throw new ApiError(400, "provide sort type values of videos")
+    }
+
+    if(!userId){
+        throw new ApiError(400, "Please provide user Id")
+    }
+
+    try {
+        const videos = await Video.aggregate([
+            {
+                $match : {
+                        $or: [
+                            {title: {$regex: query, $options: 'i'}},
+                            {description: {$regex: query, $options: 'i'}}
+                        ],
+                        isPublished: true
+                }
+            },
+            {
+                $lookup: {
+                    from: "likes",
+                    localField: "_id",
+                    foreignField: "video",
+                    as: "likes",
+                    pipeline: [
+                        {
+                            $count: "totalLikes"
+                        }
+                    ]
+                }
+            },
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "owner",
+                    foreignField: "_id",
+                    as: "owner",
+                    pipeline: [
+                        {
+                            $project: {
+                                username: 1,
+                            }
+                        }
+                    ]
+                }
+            },
+            {
+                $addFields: {
+                    owner: {
+                        $first: "$owner.username"
+                    },
+                    likes: {
+                        $cond: {
+                            //check if likes array is empty
+                            if:{$eq: [{$size: "$likes.totalLikes"}, 0 ] },
+                            then: 0,
+                            //project total number of likes
+                            else: {$first: "$likes.totalLikes"}
+                        }
+                    }
+                }
+            },
+            {
+                $project: {
+                    "_id": 1,
+                    "title": 1,
+                    "description": 1,
+                    "thumbnail": 1,
+                    "videoFile": 1,
+                    "duration": 1,
+                    "likes": 1,
+                    "owner": 1,
+                    "views": 1,
+                    "isPublished": 1,
+                    "createdAt": 1,
+                    "updatedAt": 1
+                }
+            },
+            {$sort:{[sortBy]: sortType === "asc" ? 1 : -1}},
+            {$skip: skip},
+            {$limit: pageSize}
+        ]);
+    
+        if(videos.length === 0){
+            return res
+            .status(200)
+            .json(new ApiResponse(200, "No videos available"))
+        }
+        else{
+            return res
+            .status(200)
+            .json(new ApiResponse(200, "videos fetched successfully"))
+        } 
+    } catch (error) {
+        throw new ApiError(500, `Error while getting videos. error: ${error}`)
+    }
 })
 
 //Upload a new video

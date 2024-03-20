@@ -14,9 +14,9 @@ const router = Router();
 //we want to verify user on all routes in video,
 router.use(verifyJWT)
 
-router.route("/").get(getAllVideos)
+router.route("/get-all-videos").get(getAllVideos)
 
-router.route("/").post(
+router.route("/publish-video").post(
     upload.fields([
         {
             name: "videoFile",
