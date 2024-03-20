@@ -35,7 +35,7 @@ const getAllVideos = asyncHandler(async(req,res) => {
         const videos = await Video.aggregate([
             {
                 $match : {
-                        $or: [
+                        $or: [ //perform pattern matching with case insensitive flag(i)
                             {title: {$regex: query, $options: 'i'}},
                             {description: {$regex: query, $options: 'i'}}
                         ],
@@ -190,12 +190,83 @@ const publishVideo = asyncHandler(async(req,res) => {
 
 //get particular video by ID.
 const getVideoById = asyncHandler(async(req,res) => {
-    const {videoId} = req.params;
+    try {
+        const {videoId} = req.params;
+    
+        if(!videoId){
+            throw new ApiError(400, "videoId not available")
+        }
+        let video = await Video.findById(videoId)
+        if(!video){
+            throw new ApiError(400, "No video found")
+        }
+    
+        return res
+        .status(200)
+        .json(200, video, "Video fetched successfully")
+    } catch (error) {
+        throw new ApiError(500, `Internal server error: ${error}`)
+    }
 })
 
 //update video discription, title and thumbnail
 const updateVideo = asyncHandler(async(req,res) => {
-    const {videoid} = req.params;
+    const {videoId} = req.params;
+    const CheckRefreshToken = req.cookies.refreshToken || req.body.refreshToken;
+
+    if(!videoId){
+        throw new ApiError(400, "Video Id is missing")
+    }
+
+    const video = await Video?.findById(videoId)
+    
+    if(!video){
+        throw new ApiError(400, "No video  with given id exists.")
+    }
+
+    const user = await User?.findOne(CheckRefreshToken)
+
+    if(!user){
+        throw new ApiError(404, "No user found")
+    }
+
+    if(video.owner != user._id) {
+        throw new ApiError(400, "Only video owner can update video")
+    }
+
+    const {title, description} = req.body
+
+    if(!title) {
+        throw new ApiError(400, "Title cant be empty")
+    }
+
+    if(!description) {
+        throw new ApiError(400, "description cant  be empty")
+    }
+
+    video.title = title
+    video.description = description
+
+    //update thumbnail picture
+    const newThumbnailLocalPath = req.file?.path
+
+    if(!newThumbnailLocalPath){
+        throw new ApiError(400, "Please select thumbnail file to upload")
+    }
+
+    const thumbnail = await uploadOnCloudinary(newThumbnailLocalPath)
+
+    if(!thumbnail.url){
+        throw new ApiError(500, "failed to upload thumbnail")
+    }
+
+    video.thumbnail = thumbnail.url
+
+    await video.save()
+
+    return res.status(200)
+    .json(new ApiResponse(200, video, "Video details updated successfully"))
+
 })
 
 //delete a video 
