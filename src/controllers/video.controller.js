@@ -271,12 +271,52 @@ const updateVideo = asyncHandler(async(req,res) => {
 
 //delete a video 
 const deleteVideo = asyncHandler(async (req,res) => {
-    const {videoId} = req. params;
+    const {videoId} = req.params;
+
+    if(!videoId){
+        throw new ApiError(400, "Video Id is not available")
+    }
+    
+    const video = await Video.findById(videoId);
+
+    const user = await User.find({refreshToken: req.cookies.refreshToken})
+
+    if(!user) {
+        throw new ApiError(404, "User not found")
+    }
+
+    if(video.owner === user._id.toString()) {
+        await Video.findByIdAndDelete(videoId)
+        return res
+        .status(200)
+        .json(new ApiResponse(200, "Video successfully deleted"))
+    }
+    else{
+        throw new ApiError(401, "Only owner can delete the video")
+    }
 })
 
 //toggle publish status
 const togglePublishStatus = asyncHandler(async (req,res) => {
     const {videoId} = req.params;
+
+    if(!videoId){
+        throw new ApiError(400, "video id not available")
+    }
+
+    const video = await Video.findById(videoId)
+
+    if(!video) {
+        throw new ApiError(404, "Video not found")
+    }
+
+    video.isPublished =  !video.isPublished
+
+    await video.save({validateBeforeSave: false})
+
+    return res
+    .status(200)
+    .json(new ApiResponse(200,video.isPublished, "Video publish status updated successfully"))
 })
 
 export {
