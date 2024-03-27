@@ -161,7 +161,7 @@ const updateComment = asyncHandler(async(req,res) => {
 
     if(commentToUpdate?.owner.toString() === req.user?._id.toString()){
         const updatedComment = await Comment.findByIdAndUpdate(commentToUpdate._id,
-            {$set: content},{new: true})
+            {$set: {content}},{new: true})
             return res
             .status(200)
             .json(new ApiResponse(200, updatedComment,"Comment updated successfully"))
