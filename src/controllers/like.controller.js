@@ -51,6 +51,7 @@ const toggleVideoLike = asyncHandler(async(req,res) => {
     }
 })
 
+//like unlike a comment
 const toggleCommentLike = asyncHandler(async(req,res) => {
     const {commentId} = req.params
 
@@ -95,6 +96,7 @@ const toggleCommentLike = asyncHandler(async(req,res) => {
     }
 })
 
+//like unlike a tweet
 const toggleTweetLike = asyncHandler(async(req,res) => {
     const {tweetId} = req.params
 
@@ -139,8 +141,118 @@ const toggleTweetLike = asyncHandler(async(req,res) => {
     }
 })
 
+//get all liked videos
 const getLikedVideos = asyncHandler(async(req,res) => {
+    try {
+        const userLikedVideos = await Like.aggregate([
+            {
+                //match only thode documents which have current user in it.
+                $match: {
+                    likedBy: new mongoose.Types.ObjectId(req.user?._id)
+                }
+            },
+            {   //lookup from videos to get all the liked videos by this user
+                $lookup:{
+                    from: "videos",
+                    localField: "video",
+                    foreignField: "_id",
+                    as: "likedVideos",
+                    pipeline: [
+                        {   //select only those videos which have isPublished flag as true
+                            $match:{
+                                isPublished: true,
+                            }
+                        },
+                        {   //lookup for likes on that particular video
+                            $lookup:{
+                                from: "likes",
+                                localField: "_id",
+                                foreignField: "video",
+                                as: "videoLikes",
+                                pipeline: [
+                                    {
+                                        $count: "totalLikes"
+                                    }
+                                ]
+                            }
+                        },
+                        {   //lookup for owner of the video and bring in the details.
+                            $lookup:{
+                                from: "users",
+                                localField:"owner",
+                                foreignField: "_id",
+                                as: "ownerDetails",
+                                pipeline:[
+                                    {   //get only desired data of video owner
+                                        $project: {
+                                            username: 1,
+                                            avatar: 1
+                                        }
+                                    }
+                                ]
+                            }
+                        },
+                        {   //add fields to likedVideos
+                            $addFields:{
+                                likes:{
+                                    $first: "videoLikes.totalLikes"
+                                },
+                            videoOwner:{
+                                $first: "ownerDetails"
+                                }
+                            }
+                        },
+                        {
+                            $project:{
+                                _id: 1,
+                                videoFile: 1,
+                                thumbnail: 1,
+                                title : 1,
+                                duration: 1,
+                                description: 1,
+                                views: 1,
+                                likes: 1,
+                                videoOwner: 1,
+                                createdAt: 1
+                            }
+                        }
+                    ]
+                }
+            },
+            {
+                $project: {
+                    _id: 1,
+                    createdAt: 1,
+                    likedVideos: {
+                            _id: 1,
+                            videoFile: 1,
+                            thumbnail: 1,
+                            title : 1,
+                            duration: 1,
+                            description: 1,
+                            views: 1,
+                            likes: 1,
+                            videoOwner: 1,
+                            createdAt: 1
+                    }
+                }
+            }
+        ])
     
+        if(userLikedVideos.length === 0){
+            return res
+            .status(200)
+            .json(new ApiResponse(200, "No liked videos, lets start liking videos"))
+        }
+    
+        else{
+            return res
+            .status(200)
+            .json(new ApiResponse(200, userLikedVideos, "Here are your liked videos"))
+        }
+    } catch (error) {
+        throw new ApiError(500, error ,"Something went wrong while fetching liked videos")
+    }
 })
 
 export {
