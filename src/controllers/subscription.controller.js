@@ -21,24 +21,21 @@ const togglesubscription = asyncHandler(async(req,res) => {
         throw new ApiError(404, "Channel does not exist")
     }
 
-    //get logged in user
-    const user = req.user?._id
-
     //check if user and channel id are same
-    if(req.user._id.equals(channelId)){
+    if(req.user?._id.toString() === channel._id.toString() ){
         throw new ApiError(400, "You cannot subscribe to yourself.")
     }
 
     //find  subscription of this user for this channel
     const subscriptionInfo = await Subscription.findOne({
-        subscriber: user._id,
+        subscriber: req.user?._id,
         channel: channelId
     })
 
     //if user is subscribed then unsubscribe
     if(subscriptionInfo){
 
-        const unsubscribeChannel = await Subscription.findByIdAndDelete({_id: subscriptionInfo._id})
+        const unsubscribeChannel = await Subscription.findByIdAndDelete(subscriptionInfo?._id)
     
 
     if(!unsubscribeChannel) {
@@ -53,7 +50,7 @@ const togglesubscription = asyncHandler(async(req,res) => {
     //if  user is not subscribed then subscribe
     else{
         const subscribeChannel = await Subscription.create({
-            subscriber: user._id,
+            subscriber: req.user?._id,
             channel: channelId
         })
 
@@ -209,7 +206,7 @@ const getsubscribedChannels = asyncHandler(async(req,res) => {
         else{
             return res
             .status(200)
-            .json(new ApiResponse(200, "Here's the list of your subscribed channels"))
+            .json(new ApiResponse(200, "Here's the list of subscribed channels"))
         }
     } catch (error) {
         throw new ApiError(500, "There was problem retrieving list, try again")
