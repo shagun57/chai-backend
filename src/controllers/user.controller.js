@@ -34,18 +34,19 @@ const registerUser = asyncHandler( async(req,res) => {
     //console.log("email:", email);
     
     //check validations for fields if any empty
-    if(fullName === ""){
-        throw new ApiError(400, "Full name is required")
+    if(!fullName || !email || !username || !password){
+        throw new ApiError(400, "All fields are mandatory")
     }
-    if(username === ""){
-        throw new ApiError(400, "Username required")
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if(!emailRegex.test(email)){
+        throw new ApiError(400, "Invalid Email id")
     }
-    if(password === ''){
-        throw new ApiError(400, "Password is required")
+
+    if(password.length < 8 ){
+        throw new ApiError(400, "Password must be atleast 8 characters long")
     }
-    if(email === ""){
-        throw new ApiError(400, "Email address is required")
-    }
+    
     
     //check if username or email already exists
     const existedUser = await User.findOne({
