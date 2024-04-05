@@ -1,4 +1,4 @@
-//utility function using promises
+//wrapper function using promises
 
 const asyncHandler = (requestHandler) => {
    return (req, res, next) => {
@@ -20,7 +20,7 @@ export {asyncHandler}
 //const asyncHandler = (fn) => async () => {} (makes it an async function)
 
 
-//same utility function as above using async await
+//same wrapper function as above using async await
 
 // const asyncHandler = (fn) => async (req, res, next) => {
 //     try {

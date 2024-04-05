@@ -6,6 +6,7 @@ dotenv.config({
     path: './.env'
 })
 
+//connectDB is an async function which returns a promise, which is handled through then and catch
 connectDB()
 .then(() => {
     app.listen(process.env.PORT || 8000, () => {

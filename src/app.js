@@ -12,13 +12,13 @@ app.use(cors({
 //middleware to accept json data.
 app.use(express.json({limit: "16kb"}))
 
-//middleware to accept url data
+//middleware to accept url data, extended: true help us to add objects within objects
 app.use(express.urlencoded({extended: true, limit: "16kb"}))
 
 //middleware for static files to store image, pdf etc.
 app.use(express.static("public"));
 
-//to use cookie parser
+//to use cookie parser which helps us to access cookies of client from server side to perform CRUD.
 app.use(cookieParser())
 
 
